@@ -1,5 +1,4 @@
-import 'date-fns';
-import { Chart as ChartJS } from 'chart.js';
+import Chart from 'chart.js/auto';
 import 'chartjs-adapter-date-fns';
 
 const locations = [
@@ -101,7 +100,7 @@ const init = async (colorFromWindDirection) => {
         yup = yup.yup;
     }
     const ctx = document.getElementById('lol');
-    chart = new ChartJS(ctx, {
+    chart = new Chart(ctx, {
         type: 'line',
         options: {
             plugins: {
@@ -168,3 +167,4 @@ const init = async (colorFromWindDirection) => {
         },
     });
 };
+init(false);
