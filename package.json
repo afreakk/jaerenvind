@@ -1,15 +1,14 @@
 {
-    "name": "vite-typescript-starter",
+    "name": "jaerenvind",
     "private": true,
     "version": "0.0.0",
     "type": "module",
     "scripts": {
         "dev": "vite",
-        "build": "tsc && vite build",
+        "build": "vite build",
         "preview": "vite preview"
     },
     "devDependencies": {
-        "typescript": "^5.2.2",
         "vite": "^5.2.10"
     },
     "dependencies": {

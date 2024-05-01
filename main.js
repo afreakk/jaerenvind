@@ -27,6 +27,8 @@ const locations = [
         coordinates: [58.93375, 5.682029999999941],
     },
     { name: 'sømmevågen', coordinates: [58.90017, 5.636110000000031] },
+    { name: 'sirigrunnen', coordinates: [58.96802, 5.765909999999963] },
+    { name: 'valuen', coordinates: [58.92472, 5.7487599999999475] },
     { name: 'solasanden', coordinates: [58.88217149891776, 5.597322917566316] },
     { name: 'rege', coordinates: [58.876984214472, 5.592756306798037] },
     { name: 'ølbørsanden', coordinates: [58.87012, 5.5693200000000616] },
@@ -108,12 +110,19 @@ const init = async (colorFromWindDirection) => {
                     callbacks: {
                         label: (ctx) =>
                             yup[ctx.datasetIndex].name +
-                            '(' +
+                            ' (' +
                             degToCompass(
                                 yup[ctx.datasetIndex].timeseries[ctx.dataIndex]
                                     .data.instant.details.wind_from_direction
                             ) +
-                            ')',
+                            ' ' +
+                            yup[ctx.datasetIndex].timeseries[ctx.dataIndex].data
+                                .instant.details.wind_from_direction +
+                            ') kn:' +
+                            (
+                                yup[ctx.datasetIndex].timeseries[ctx.dataIndex]
+                                    .data.instant.details.wind_speed * 1.9438452
+                            ).toFixed(1),
                     },
                 },
             },
