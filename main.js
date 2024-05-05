@@ -1,5 +1,8 @@
 import Chart from 'chart.js/auto';
 import 'chartjs-adapter-date-fns';
+import zoomPlugin from 'chartjs-plugin-zoom';
+
+Chart.register(zoomPlugin);
 
 const locations = [
     {
@@ -28,13 +31,12 @@ const locations = [
     },
     { name: 'sømmevågen', coordinates: [58.90017, 5.636110000000031] },
     { name: 'sirigrunnen', coordinates: [58.96802, 5.765909999999963] },
-    { name: 'valuen', coordinates: [58.92472, 5.7487599999999475] },
+    { name: 'vaulen', coordinates: [58.92472, 5.7487599999999475] },
     { name: 'solasanden', coordinates: [58.88217149891776, 5.597322917566316] },
     { name: 'rege', coordinates: [58.876984214472, 5.592756306798037] },
     { name: 'ølbørsanden', coordinates: [58.87012, 5.5693200000000616] },
     { name: 'hellestøstranden', coordinates: [58.83583, 5.551389999999969] },
     { name: 'selestranda', coordinates: [58.81598, 5.541879999999992] },
-    { name: 'boresanden', coordinates: [58.79485, 5.54672000000005] },
     { name: 'boresanden', coordinates: [58.79485, 5.54672000000005] },
     { name: 'revehamnen', coordinates: [58.77161, 5.514279999999985] },
     { name: 'søre revtangen', coordinates: [58.75211, 5.489759999999933] },
@@ -105,7 +107,24 @@ const init = async (colorFromWindDirection) => {
     chart = new Chart(ctx, {
         type: 'line',
         options: {
+            maintainAspectRatio: false,
             plugins: {
+                zoom: {
+                    pan: {
+                        enabled: true,
+                        modifierKey: 'shift',
+                        scaleMode: 'x',
+                    },
+                    zoom: {
+                        drag: {
+                            enabled: true,
+                        },
+                        pinch: {
+                            enabled: true,
+                        },
+                        mode: 'x',
+                    },
+                },
                 tooltip: {
                     callbacks: {
                         label: (ctx) =>
@@ -130,7 +149,10 @@ const init = async (colorFromWindDirection) => {
                 x: {
                     type: 'time',
                     time: {
-                        unit: 'day',
+                        tooltipFormat: 'd/M EEEE HH',
+                        displayFormats: {
+                            hour: 'EEEE HH',
+                        },
                     },
                 },
             },
