@@ -5,10 +5,7 @@ import zoomPlugin from 'chartjs-plugin-zoom';
 Chart.register(zoomPlugin);
 
 const locations = [
-    {
-        name: 'sokn',
-        coordinates: [59.05457902524904, 5.678849408617339],
-    },
+    { name: 'sokn', coordinates: [59.05457902524904, 5.678849408617339] },
     {
         name: 'sandestranden',
         coordinates: [59.01795083498445, 5.588636433752413],
@@ -25,10 +22,7 @@ const locations = [
         name: 'håhammarbrautene',
         coordinates: [58.93124735525694, 5.642344124456258],
     },
-    {
-        name: 'liapynten',
-        coordinates: [58.93375, 5.682029999999941],
-    },
+    { name: 'liapynten', coordinates: [58.93375, 5.682029999999941] },
     { name: 'sømmevågen', coordinates: [58.90017, 5.636110000000031] },
     { name: 'sirigrunnen', coordinates: [58.96802, 5.765909999999963] },
     { name: 'vaulen', coordinates: [58.92472, 5.7487599999999475] },
@@ -74,6 +68,9 @@ const degToCompass = (num) =>
         'NNW',
     ][parseInt(num / 22.5 + 0.5) % 16];
 
+document.querySelector('#resetZoom').addEventListener('click', () => {
+    chart.resetZoom();
+});
 const colorFromWindDirectionCheckbox = document.querySelector(
     '#colorFromWindDirection'
 );
@@ -89,7 +86,7 @@ colorFromWindDirectionCheckbox.addEventListener('change', () => {
 let chart;
 const init = async (colorFromWindDirection) => {
     chart && chart.destroy();
-    let yup = JSON.parse(localStorage.getItem('yoxy'));
+    let yup = JSON.parse(localStorage.getItem('cachedLocationData'));
     if (!yup || yup.date < new Date() - 300000) {
         yup = await Promise.all(
             locations.map(async (l) => {
@@ -97,13 +94,13 @@ const init = async (colorFromWindDirection) => {
             })
         );
         localStorage.setItem(
-            'yoxy',
+            'cachedLocationData',
             JSON.stringify({ date: +new Date(), yup })
         );
     } else {
         yup = yup.yup;
     }
-    const ctx = document.getElementById('lol');
+    const ctx = document.getElementById('chart-canvas');
     chart = new Chart(ctx, {
         type: 'line',
         options: {

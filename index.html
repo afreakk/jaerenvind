@@ -8,23 +8,17 @@
     </head>
 
     <body>
-        <div>
+        <div id="controllers">
             <input
                 type="checkbox"
                 id="colorFromWindDirection"
                 name="colorFromWindDirection"
             />
             <label for="colorFromWindDirection">Farge fra vindretning</label>
+            <button id="resetZoom">Reset zoom</button>
         </div>
-        <div
-            class="chart-container"
-            style="
-                position: relative;
-                height: calc(100vh - 100px);
-                width: calc(100vw - 30px);
-            "
-        >
-            <canvas id="lol"></canvas>
+        <div id="chart-container">
+            <canvas id="chart-canvas"></canvas>
         </div>
         <script type="module" src="/main.js"></script>
     </body>
