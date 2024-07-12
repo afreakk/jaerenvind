@@ -16,6 +16,42 @@
             />
             <label for="colorFromWindDirection">Farge fra vindretning</label>
             <button id="resetZoom">Reset zoom</button>
+            <fieldset id="windtypeselector">
+                <div>
+                    <input
+                        checked="true"
+                        type="radio"
+                        id="wind"
+                        name="windtypeselector"
+                        value="wind_speed"
+                    />
+                    <label for="wind">wind</label>
+
+                    <input
+                        type="radio"
+                        id="gust"
+                        name="windtypeselector"
+                        value="wind_speed_of_gust"
+                    />
+                    <label for="gust">gust</label>
+
+                    <input
+                        type="radio"
+                        id="percentile_90"
+                        name="windtypeselector"
+                        value="wind_speed_percentile_90"
+                    />
+                    <label for="percentile_90">percentile_90</label>
+
+                    <input
+                        type="radio"
+                        id="percentile_10"
+                        name="windtypeselector"
+                        value="wind_speed_percentile_10"
+                    />
+                    <label for="percentile_10">percentile_10</label>
+                </div>
+            </fieldset>
         </div>
         <div id="chart-container">
             <canvas id="chart-canvas"></canvas>

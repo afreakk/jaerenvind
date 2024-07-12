@@ -42,7 +42,7 @@ const getTimeSerie = async (location) => ({
     timeseries: (
         await (
             await fetch(
-                `https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=${location.coordinates[0]}&lon=${location.coordinates[1]}`
+                `https://api.met.no/weatherapi/locationforecast/2.0/complete?lat=${location.coordinates[0]}&lon=${location.coordinates[1]}`
             )
         ).json()
     ).properties.timeseries,
@@ -75,16 +75,34 @@ const colorFromWindDirectionCheckbox = document.querySelector(
     '#colorFromWindDirection'
 );
 
+let colorFromWindDirection = false;
+let windSelector = 'wind_speed';
+
 colorFromWindDirectionCheckbox.addEventListener('change', () => {
-    if (colorFromWindDirectionCheckbox.checked) {
-        init(true);
-    } else {
-        init(false);
-    }
+    colorFromWindDirection = colorFromWindDirectionCheckbox.checked;
+    init();
 });
 
+const onWindTypeSelectorClick = (a, b, c) => {
+    windSelector = a.target.value;
+    init();
+};
+
+document
+    .querySelector('#wind')
+    .addEventListener('click', onWindTypeSelectorClick);
+document
+    .querySelector('#gust')
+    .addEventListener('click', onWindTypeSelectorClick);
+document
+    .querySelector('#percentile_90')
+    .addEventListener('click', onWindTypeSelectorClick);
+document
+    .querySelector('#percentile_10')
+    .addEventListener('click', onWindTypeSelectorClick);
+
 let chart;
-const init = async (colorFromWindDirection) => {
+const init = async () => {
     chart && chart.destroy();
     let yup = JSON.parse(localStorage.getItem('cachedLocationData'));
     if (!yup || yup.date < new Date() - 300000) {
@@ -137,7 +155,8 @@ const init = async (colorFromWindDirection) => {
                             ') kn:' +
                             (
                                 yup[ctx.datasetIndex].timeseries[ctx.dataIndex]
-                                    .data.instant.details.wind_speed * 1.9438452
+                                    .data.instant.details[windSelector] *
+                                1.9438452
                             ).toFixed(1),
                     },
                 },
@@ -189,10 +208,10 @@ const init = async (colorFromWindDirection) => {
                 },
                 label: y.name,
                 data: y.timeseries.map(
-                    (x) => x.data.instant.details.wind_speed * 1.9438452
+                    (x) => x.data.instant.details[windSelector] * 1.9438452
                 ),
             })),
         },
     });
 };
-init(false);
+init();
