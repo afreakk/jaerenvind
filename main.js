@@ -176,6 +176,8 @@ const init = async () => {
         data: {
             labels: yup[0].timeseries.map((x) => x.time),
             datasets: yup.map((y) => ({
+                pointRadius: 5,
+                pointHoverRadius: 10,
                 segment: {
                     borderColor: colorFromWindDirection
                         ? (ctx) =>
