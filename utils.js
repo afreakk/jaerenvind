@@ -47,8 +47,8 @@ export const getCachedTimeSerie = async () => {
     let yup = JSON.parse(localStorage.getItem('cachedLocationData'));
     if (!yup || yup.date < new Date() - 300000) {
         yup = await Promise.all(
-            utils.locations.map(async (l) => {
-                return await utils.getTimeSerie(l);
+            locations.map(async (l) => {
+                return await getTimeSerie(l);
             })
         );
         localStorage.setItem(
