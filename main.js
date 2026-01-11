@@ -238,6 +238,14 @@ const renderChart = async (chartState) => {
                             enabled: true,
                         },
                         mode: 'x',
+                        // Slower zoom speed for category scale (daylight filter)
+                        speed: chartState.hideDarkHours ? 0.05 : 0.1,
+                    },
+                    limits: {
+                        x: {
+                            // Minimum 5 data points visible when using category scale
+                            minRange: chartState.hideDarkHours ? 5 : undefined,
+                        },
                     },
                 },
                 tooltip: {
