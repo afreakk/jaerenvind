@@ -1,3 +1,5 @@
+import SunCalc from 'suncalc';
+
 export const locations = [
     { name: 'sokn', coordinates: [59.05457902524904, 5.678849408617339] },
     {
@@ -28,8 +30,9 @@ export const locations = [
     { name: 'boresanden', coordinates: [58.79485, 5.54672000000005] },
     { name: 'revehamnen', coordinates: [58.77161, 5.514279999999985] },
     { name: 'søre revtangen', coordinates: [58.75211, 5.489759999999933] },
-    { name: 'syltertangen', coordinates: [58.69763, 5.540570000000002] },
-    { name: 'nærlandssanden', coordinates: [58.68483, 5.549070000000029] },
+    { name: 'skeie', coordinates: [58.69763, 5.540570000000002] },
+    { name: 'refsnes', coordinates: [58.68483, 5.549070000000029] },
+    { name: 'brusand', coordinates: [58.53274309602588, 5.755182824765484] },
 ];
 
 export const getTimeSerie = async (location) => ({
@@ -80,3 +83,19 @@ export const degToCompass = (num) =>
         'NW',
         'NNW',
     ][parseInt(num / 22.5 + 0.5) % 16];
+
+// Check if a given time is during daylight hours for a location
+// Uses average coordinates of Jæren area for sunrise/sunset calculation
+export const isDaylight = (timeString) => {
+    const date = new Date(timeString);
+    // Use center of Jæren area for sun calculation (all spots are close enough)
+    const lat = 58.9;
+    const lon = 5.6;
+    const times = SunCalc.getTimes(date, lat, lon);
+    return date >= times.sunrise && date <= times.sunset;
+};
+
+// Filter timeseries to only include daylight hours
+export const filterDaylightHours = (timeseries) => {
+    return timeseries.filter((entry) => isDaylight(entry.time));
+};
