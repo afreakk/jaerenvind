@@ -9,57 +9,70 @@
 
     <body>
         <div id="controllers">
-            <input
-                type="checkbox"
-                id="colorFromWindDirection"
-                name="colorFromWindDirection"
-            />
-            <label for="colorFromWindDirection">Farge fra vindretning</label>
-            <input
-                type="checkbox"
-                id="hideDarkHours"
-                name="hideDarkHours"
-            />
-            <label for="hideDarkHours">Skjul mørke timer</label>
+            <label for="colorFromWindDirection">
+                <input
+                    type="checkbox"
+                    id="colorFromWindDirection"
+                    name="colorFromWindDirection"
+                />
+                Farge fra vindretning
+            </label>
+            <label for="hideDarkHours">
+                <input
+                    type="checkbox"
+                    id="hideDarkHours"
+                    name="hideDarkHours"
+                />
+                Skjul mørke timer
+            </label>
             <button id="resetZoom">Reset zoom</button>
+            <select id="stationSelector">
+                <option value="">Alle spots</option>
+            </select>
             <fieldset id="windtypeselector">
                 <div>
-                    <input
-                        checked="true"
-                        type="radio"
-                        id="wind"
-                        name="windtypeselector"
-                        value="wind_speed"
-                    />
-                    <label for="wind">wind</label>
-
-                    <input
-                        type="radio"
-                        id="gust"
-                        name="windtypeselector"
-                        value="wind_speed_of_gust"
-                    />
-                    <label for="gust">gust</label>
-
-                    <input
-                        type="radio"
-                        id="percentile_90"
-                        name="windtypeselector"
-                        value="wind_speed_percentile_90"
-                    />
-                    <label for="percentile_90">percentile_90</label>
-
-                    <input
-                        type="radio"
-                        id="percentile_10"
-                        name="windtypeselector"
-                        value="wind_speed_percentile_10"
-                    />
-                    <label for="percentile_10">percentile_10</label>
+                    <label for="wind">
+                        <input
+                            checked="true"
+                            type="radio"
+                            id="wind"
+                            name="windtypeselector"
+                            value="wind_speed"
+                        />
+                        wind
+                    </label>
+                    <label for="gust">
+                        <input
+                            type="radio"
+                            id="gust"
+                            name="windtypeselector"
+                            value="wind_speed_of_gust"
+                        />
+                        gust
+                    </label>
+                    <label for="percentile_90">
+                        <input
+                            type="radio"
+                            id="percentile_90"
+                            name="windtypeselector"
+                            value="wind_speed_percentile_90"
+                        />
+                        p90
+                    </label>
+                    <label for="percentile_10">
+                        <input
+                            type="radio"
+                            id="percentile_10"
+                            name="windtypeselector"
+                            value="wind_speed_percentile_10"
+                        />
+                        p10
+                    </label>
                 </div>
             </fieldset>
         </div>
         <div id="chart-container">
+            <div id="loading">Laster vinddata...</div>
             <canvas id="chart-canvas"></canvas>
         </div>
         <script type="module" src="/main.js"></script>

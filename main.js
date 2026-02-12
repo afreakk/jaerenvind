@@ -8,19 +8,33 @@ import * as utils from './utils';
 
 Chart.register(zoomPlugin, annotationPlugin);
 
-// Wing size wind zones (knots) - based on wing foil sizing chart
+const isTouch =
+    'ontouchstart' in window ||
+    navigator.maxTouchPoints > 0 ||
+    matchMedia('(pointer: coarse)').matches;
+
+// Wing size wind zones (knots) — based on wing foil sizing chart
 const wingZones = [
-    { size: '5.5m²', min: 12, max: 22, color: 'rgba(76, 175, 80, 0.15)' },   // Green - lightest wind
-    { size: '5.0m²', min: 14, max: 25, color: 'rgba(139, 195, 74, 0.15)' },  // Light green
-    { size: '4.5m²', min: 18, max: 28, color: 'rgba(205, 220, 57, 0.15)' },  // Lime
-    { size: '4.0m²', min: 22, max: 32, color: 'rgba(255, 235, 59, 0.15)' },  // Yellow
-    { size: '3.5m²', min: 25, max: 35, color: 'rgba(255, 193, 7, 0.15)' },   // Amber
-    { size: '3.0m²', min: 28, max: 38, color: 'rgba(255, 152, 0, 0.15)' },   // Orange
-    { size: '2.5m²', min: 30, max: 42, color: 'rgba(255, 87, 34, 0.15)' },   // Deep orange
-    { size: '2.0m²', min: 35, max: 45, color: 'rgba(244, 67, 54, 0.15)' },   // Red - strongest wind
+    { size: '5.5m²', min: 12, max: 22, color: 'rgba(76, 175, 80, 0.08)' },
+    { size: '5.0m²', min: 14, max: 25, color: 'rgba(139, 195, 74, 0.08)' },
+    { size: '4.5m²', min: 18, max: 28, color: 'rgba(205, 220, 57, 0.08)' },
+    { size: '4.0m²', min: 22, max: 32, color: 'rgba(255, 235, 59, 0.08)' },
+    { size: '3.5m²', min: 25, max: 35, color: 'rgba(255, 193, 7, 0.08)' },
+    { size: '3.0m²', min: 28, max: 38, color: 'rgba(255, 152, 0, 0.08)' },
+    { size: '2.5m²', min: 30, max: 42, color: 'rgba(255, 87, 34, 0.08)' },
+    { size: '2.0m²', min: 35, max: 45, color: 'rgba(244, 67, 54, 0.08)' },
 ];
 
-// Generate wing zone annotations
+// 20 maximally distinct colors for each spot
+const spotColors = [
+    '#e6194B', '#3cb44b', '#4363d8', '#f58231', '#911eb4',
+    '#42d4f4', '#f032e6', '#bfef45', '#fabed4', '#469990',
+    '#dcbeff', '#9A6324', '#fffac8', '#800000', '#aaffc3',
+    '#808000', '#ffd8b1', '#000075', '#a9a9a9', '#ffe119',
+];
+
+// --- Annotation builders ---
+
 const generateWingZoneAnnotations = () => {
     const annotations = {};
     wingZones.forEach((zone, index) => {
@@ -42,24 +56,18 @@ const generateWingZoneAnnotations = () => {
     return annotations;
 };
 
-// Generate daylight period annotations for time scale (when showing all hours)
 const generateDaylightAnnotations = (timeseries) => {
     const annotations = {};
-    const lat = 58.9;
-    const lon = 5.6;
-    
-    // Find unique days in the timeseries
+    const { lat, lon } = utils.JAEREN_CENTER;
+
     const days = new Set();
     timeseries.forEach((entry) => {
         days.add(format(new Date(entry.time), 'yyyy-MM-dd'));
     });
-    
-    // Create a daylight box for each day
+
     let dayIndex = 0;
     days.forEach((day) => {
-        const date = new Date(day);
-        const times = SunCalc.getTimes(date, lat, lon);
-        
+        const times = SunCalc.getTimes(new Date(day), lat, lon);
         annotations[`daylight${dayIndex}`] = {
             type: 'box',
             xMin: times.sunrise.getTime(),
@@ -69,11 +77,30 @@ const generateDaylightAnnotations = (timeseries) => {
         };
         dayIndex++;
     });
-    
+
     return annotations;
 };
 
-// Generate day annotations for alternating background colors (category scale)
+const DAY_COLORS = [
+    { bg: 'rgba(100, 149, 237, 0.25)', label: '#7B9FFF' },
+    { bg: 'rgba(255, 182, 100, 0.25)', label: '#FFB366' },
+];
+
+const createDayAnnotation = (dayIndex, xMin, xMax, dayLabel) => ({
+    type: 'box',
+    xMin,
+    xMax,
+    backgroundColor: DAY_COLORS[dayIndex % 2].bg,
+    borderWidth: 0,
+    label: {
+        display: true,
+        content: dayLabel,
+        position: { x: 'center', y: 'start' },
+        font: { weight: 'bold', size: 12 },
+        color: DAY_COLORS[dayIndex % 2].label,
+    },
+});
+
 const generateDayAnnotations = (timeseries) => {
     const annotations = {};
     let currentDay = null;
@@ -81,330 +108,301 @@ const generateDayAnnotations = (timeseries) => {
     let dayIndex = 0;
 
     timeseries.forEach((entry, index) => {
-        const date = new Date(entry.time);
-        const day = format(date, 'yyyy-MM-dd');
+        const day = format(new Date(entry.time), 'yyyy-MM-dd');
 
         if (currentDay !== day) {
-            // Close previous day box
             if (currentDay !== null) {
-                annotations[`day${dayIndex}`] = {
-                    type: 'box',
-                    xMin: dayStart - 0.5,
-                    xMax: index - 0.5,
-                    backgroundColor:
-                        dayIndex % 2 === 0
-                            ? 'rgba(100, 149, 237, 0.25)'
-                            : 'rgba(255, 182, 100, 0.25)',
-                    borderWidth: 0,
-                    label: {
-                        display: true,
-                        content: format(new Date(currentDay), 'EEE d/M'),
-                        position: { x: 'center', y: 'start' },
-                        font: { weight: 'bold', size: 12 },
-                        color: dayIndex % 2 === 0 ? '#7B9FFF' : '#FFB366',
-                    },
-                };
+                const label = format(new Date(currentDay), 'EEE d/M');
+                annotations[`day${dayIndex}`] = createDayAnnotation(
+                    dayIndex, dayStart - 0.5, index - 0.5, label
+                );
                 dayIndex++;
             }
             currentDay = day;
             dayStart = index;
         }
 
-        // Close last day box at the end
         if (index === timeseries.length - 1) {
-            annotations[`day${dayIndex}`] = {
-                type: 'box',
-                xMin: dayStart - 0.5,
-                xMax: index + 0.5,
-                backgroundColor:
-                    dayIndex % 2 === 0
-                        ? 'rgba(100, 149, 237, 0.25)'
-                        : 'rgba(255, 182, 100, 0.25)',
-                borderWidth: 0,
-                label: {
-                    display: true,
-                    content: format(new Date(currentDay), 'EEE d/M'),
-                    position: { x: 'center', y: 'start' },
-                    font: { weight: 'bold', size: 12 },
-                    color: dayIndex % 2 === 0 ? '#7B9FFF' : '#FFB366',
-                },
-            };
+            const label = format(new Date(currentDay), 'EEE d/M');
+            annotations[`day${dayIndex}`] = createDayAnnotation(
+                dayIndex, dayStart - 0.5, index + 0.5, label
+            );
         }
     });
 
     return annotations;
 };
 
-// 20 maximally distinct colors for each spot
-const spotColors = [
-    '#e6194B', // Red
-    '#3cb44b', // Green
-    '#4363d8', // Blue
-    '#f58231', // Orange
-    '#911eb4', // Purple
-    '#42d4f4', // Cyan
-    '#f032e6', // Magenta
-    '#bfef45', // Lime
-    '#fabed4', // Pink
-    '#469990', // Teal
-    '#dcbeff', // Lavender
-    '#9A6324', // Brown
-    '#fffac8', // Beige
-    '#800000', // Maroon
-    '#aaffc3', // Mint
-    '#808000', // Olive
-    '#ffd8b1', // Apricot
-    '#000075', // Navy
-    '#a9a9a9', // Grey
-    '#ffe119', // Yellow
-];
+// --- Dataset styling (shared between legend click and dataset builder) ---
 
-const setupControllers = (chartState, renderChartWithState) => {
+const getDatasetStyle = (index, selectedStation) => {
+    const color = spotColors[index % spotColors.length];
+    const isSelected = selectedStation === null || selectedStation === index;
+    const isHighlighted = selectedStation === index;
+
+    return {
+        borderColor: isSelected ? color : color + '22',
+        backgroundColor: isSelected ? color : color + '22',
+        borderWidth: isSelected ? (isHighlighted ? 4 : 2) : 1,
+        pointRadius: isSelected ? 5 : 0,
+    };
+};
+
+// --- Wind direction to color (HSL avoids tan overflow) ---
+
+const windDirectionToColor = (degrees) =>
+    `hsl(${degrees}, 70%, 50%)`;
+
+// --- Tooltip label builder ---
+
+const buildTooltipLabel = (tooltipCtx, timeSerie, windSelector) => {
+    const station = timeSerie[tooltipCtx.datasetIndex];
+    const point = station?.timeseries[tooltipCtx.dataIndex]?.data?.instant?.details;
+    if (!point) return '';
+    const compass = utils.degToCompass(point.wind_from_direction);
+    const knots = (point[windSelector] * utils.MS_TO_KNOTS).toFixed(1);
+    return `${station.name} (${compass} ${point.wind_from_direction}°) kn:${knots}`;
+};
+
+// --- Zoom/pan config (touch-aware) ---
+
+const buildZoomConfig = (hideDarkHours) => ({
+    pan: {
+        enabled: true,
+        // Desktop: shift+drag to pan. Touch: free pan (no modifier).
+        modifierKey: isTouch ? null : 'shift',
+        scaleMode: 'x',
+        threshold: isTouch ? 12 : 10,
+    },
+    zoom: {
+        drag: {
+            enabled: !isTouch, // Desktop only: drag to zoom
+        },
+        pinch: {
+            enabled: true,
+        },
+        mode: 'x',
+        speed: hideDarkHours ? 0.05 : 0.1,
+    },
+    limits: {
+        x: {
+            minRange: hideDarkHours ? 5 : undefined,
+        },
+    },
+});
+
+// --- Legend config (display only, station selection is via dropdown) ---
+
+const buildLegendConfig = () => ({
+    display: false,
+});
+
+// --- Scale configs ---
+
+const buildScales = (hideDarkHours) => ({
+    x: hideDarkHours
+        ? {
+              type: 'category',
+              ticks: { maxRotation: 45, minRotation: 45, color: '#ccc' },
+              grid: { color: 'rgba(255, 255, 255, 0.1)' },
+          }
+        : {
+              type: 'time',
+              time: {
+                  tooltipFormat: 'd/M EEEE HH',
+                  displayFormats: { hour: 'EEEE HH' },
+              },
+              ticks: { color: '#ccc' },
+              grid: { color: 'rgba(255, 255, 255, 0.1)' },
+          },
+    y: {
+        ticks: { color: '#ccc' },
+        grid: { color: 'rgba(255, 255, 255, 0.1)' },
+    },
+});
+
+// --- Dataset builder ---
+
+const buildDatasets = (timeSerie, chartState) =>
+    timeSerie.map((station, index) => ({
+        ...getDatasetStyle(index, chartState.selectedStation),
+        pointHoverRadius: 10,
+        hitRadius: isTouch ? 12 : 4,
+        segment: {
+            borderColor: chartState.colorFromWindDirection
+                ? (ctx) => {
+                      const direction =
+                          station.timeseries[ctx.p0DataIndex]?.data?.instant
+                              ?.details?.wind_from_direction;
+                      return direction != null
+                          ? windDirectionToColor(direction)
+                          : undefined;
+                  }
+                : undefined,
+        },
+        label: station.name,
+        data: station.timeseries.map(
+            (entry) =>
+                entry.data.instant.details[chartState.windSelector] *
+                utils.MS_TO_KNOTS
+        ),
+    }));
+
+// --- Loading indicator ---
+
+const showLoading = () => {
+    const el = document.getElementById('loading');
+    if (el) el.classList.remove('hidden');
+};
+
+const hideLoading = () => {
+    const el = document.getElementById('loading');
+    if (el) el.classList.add('hidden');
+};
+
+// --- Main render (full create) — called on init and when scale type changes ---
+
+const createChart = async (chartState) => {
+    showLoading();
+
+    try {
+        const rawTimeSerie = await utils.getCachedTimeSerie();
+
+        const timeSerie = chartState.hideDarkHours
+            ? rawTimeSerie.map((location) => ({
+                  ...location,
+                  timeseries: utils.filterDaylightHours(location.timeseries),
+              }))
+            : rawTimeSerie;
+
+        // Store for use in update path
+        chartState._timeSerie = timeSerie;
+        chartState._rawTimeSerie = rawTimeSerie;
+
+        if (chartState.chart) {
+            chartState.chart.destroy();
+        }
+
+        const canvasElement = document.getElementById('chart-canvas');
+        chartState.chart = new Chart(canvasElement, {
+            type: 'line',
+            options: {
+                maintainAspectRatio: false,
+                plugins: {
+                    annotation: {
+                        annotations: {
+                            ...generateWingZoneAnnotations(),
+                            ...(chartState.hideDarkHours
+                                ? generateDayAnnotations(timeSerie[0].timeseries)
+                                : generateDaylightAnnotations(rawTimeSerie[0].timeseries)),
+                        },
+                    },
+                    zoom: buildZoomConfig(chartState.hideDarkHours),
+                    tooltip: {
+                        callbacks: {
+                            label: (ctx) =>
+                                buildTooltipLabel(ctx, timeSerie, chartState.windSelector),
+                        },
+                    },
+                    legend: buildLegendConfig(),
+                },
+                scales: buildScales(chartState.hideDarkHours),
+            },
+            data: {
+                labels: chartState.hideDarkHours
+                    ? timeSerie[0].timeseries.map((entry) =>
+                          format(new Date(entry.time), 'HH:mm')
+                      )
+                    : timeSerie[0].timeseries.map((entry) => entry.time),
+                datasets: buildDatasets(timeSerie, chartState),
+            },
+        });
+    } catch (error) {
+        const el = document.getElementById('loading');
+        if (el) el.textContent = `Feil: ${error.message}`;
+        return;
+    }
+
+    hideLoading();
+};
+
+// --- Light update (no destroy) — for wind selector, color mode, station selection ---
+
+const updateChart = (chartState) => {
+    const chart = chartState.chart;
+    const timeSerie = chartState._timeSerie;
+    if (!chart || !timeSerie) return;
+
+    // Update tooltip callback to use current windSelector
+    chart.options.plugins.tooltip.callbacks.label = (ctx) =>
+        buildTooltipLabel(ctx, timeSerie, chartState.windSelector);
+
+    // Rebuild datasets with new styling/data
+    chart.data.datasets = buildDatasets(timeSerie, chartState);
+    chart.update('none');
+};
+
+// --- Controller setup ---
+
+const populateStationSelector = () => {
+    const select = document.querySelector('#stationSelector');
+    utils.locations.forEach((location, index) => {
+        const option = document.createElement('option');
+        option.value = index;
+        option.textContent = location.name;
+        select.appendChild(option);
+    });
+};
+
+const setupControllers = (chartState, fullRender, lightUpdate) => {
     document.querySelector('#resetZoom').addEventListener('click', () => {
         chartState.chart.resetZoom();
     });
-    const colorFromWindDirectionCheckbox = document.querySelector(
-        '#colorFromWindDirection'
-    );
 
-    colorFromWindDirectionCheckbox.addEventListener('change', () => {
-        chartState.colorFromWindDirection =
-            colorFromWindDirectionCheckbox.checked;
-        renderChartWithState();
+    document.querySelector('#colorFromWindDirection').addEventListener('change', (event) => {
+        chartState.colorFromWindDirection = event.target.checked;
+        lightUpdate();
     });
 
-    const hideDarkHoursCheckbox = document.querySelector('#hideDarkHours');
-    hideDarkHoursCheckbox.addEventListener('change', () => {
-        chartState.hideDarkHours = hideDarkHoursCheckbox.checked;
-        renderChartWithState();
+    // hideDarkHours changes the x-axis scale type — requires full recreate
+    document.querySelector('#hideDarkHours').addEventListener('change', (event) => {
+        chartState.hideDarkHours = event.target.checked;
+        fullRender();
     });
 
-    const onWindTypeSelectorClick = (a) => {
-        chartState.windSelector = a.target.value;
-        renderChartWithState();
-    };
+    document.querySelectorAll('#windtypeselector input[type="radio"]')
+        .forEach((radio) => {
+            radio.addEventListener('change', (event) => {
+                chartState.windSelector = event.target.value;
+                lightUpdate();
+            });
+        });
 
-    document
-        .querySelector('#wind')
-        .addEventListener('click', onWindTypeSelectorClick);
-    document
-        .querySelector('#gust')
-        .addEventListener('click', onWindTypeSelectorClick);
-    document
-        .querySelector('#percentile_90')
-        .addEventListener('click', onWindTypeSelectorClick);
-    document
-        .querySelector('#percentile_10')
-        .addEventListener('click', onWindTypeSelectorClick);
-};
-
-const renderChart = async (chartState) => {
-    chartState.chart && chartState.chart.destroy();
-    const rawTimeSerie = await utils.getCachedTimeSerie();
-    
-    // Filter to daylight hours if enabled
-    const timeSerie = chartState.hideDarkHours
-        ? rawTimeSerie.map((location) => ({
-              ...location,
-              timeseries: utils.filterDaylightHours(location.timeseries),
-          }))
-        : rawTimeSerie;
-    
-    const ctx = document.getElementById('chart-canvas');
-    chartState.chart = new Chart(ctx, {
-        type: 'line',
-        options: {
-            maintainAspectRatio: false,
-            plugins: {
-                annotation: {
-                    annotations: {
-                        ...generateWingZoneAnnotations(),
-                        ...(chartState.hideDarkHours
-                            ? generateDayAnnotations(timeSerie[0].timeseries)
-                            : generateDaylightAnnotations(rawTimeSerie[0].timeseries)),
-                    },
-                },
-                zoom: {
-                    pan: {
-                        enabled: true,
-                        modifierKey: 'shift',
-                        scaleMode: 'x',
-                    },
-                    zoom: {
-                        drag: {
-                            enabled: true,
-                        },
-                        pinch: {
-                            enabled: true,
-                        },
-                        mode: 'x',
-                        // Slower zoom speed for category scale (daylight filter)
-                        speed: chartState.hideDarkHours ? 0.05 : 0.1,
-                    },
-                    limits: {
-                        x: {
-                            // Minimum 5 data points visible when using category scale
-                            minRange: chartState.hideDarkHours ? 5 : undefined,
-                        },
-                    },
-                },
-                tooltip: {
-                    callbacks: {
-                        label: (ctx) =>
-                            timeSerie[ctx.datasetIndex].name +
-                            ' (' +
-                            utils.degToCompass(
-                                timeSerie[ctx.datasetIndex].timeseries[
-                                    ctx.dataIndex
-                                ].data.instant.details.wind_from_direction
-                            ) +
-                            ' ' +
-                            timeSerie[ctx.datasetIndex].timeseries[
-                                ctx.dataIndex
-                            ].data.instant.details.wind_from_direction +
-                            ') kn:' +
-                            (
-                                timeSerie[ctx.datasetIndex].timeseries[
-                                    ctx.dataIndex
-                                ].data.instant.details[
-                                    chartState.windSelector
-                                ] * 1.9438452
-                            ).toFixed(1),
-                    },
-                },
-                legend: {
-                    labels: {
-                        color: '#ccc',
-                    },
-                    onHover: (event, legendItem, legend) => {
-                        const chart = legend.chart;
-                        const hoveredIndex = legendItem.datasetIndex;
-                        chart.data.datasets.forEach((dataset, index) => {
-                            const originalColor = spotColors[index % spotColors.length];
-                            if (index === hoveredIndex) {
-                                dataset.borderColor = originalColor;
-                                dataset.backgroundColor = originalColor;
-                                dataset.borderWidth = 4;
-                            } else {
-                                dataset.borderColor = originalColor + '22';
-                                dataset.backgroundColor = originalColor + '22';
-                                dataset.borderWidth = 1;
-                            }
-                        });
-                        chart.update('none');
-                    },
-                    onLeave: (event, legendItem, legend) => {
-                        const chart = legend.chart;
-                        chart.data.datasets.forEach((dataset, index) => {
-                            const originalColor = spotColors[index % spotColors.length];
-                            dataset.borderColor = originalColor;
-                            dataset.backgroundColor = originalColor;
-                            dataset.borderWidth = 2;
-                        });
-                        chart.update('none');
-                    },
-                },
-            },
-            scales: {
-                x: chartState.hideDarkHours
-                    ? {
-                          type: 'category',
-                          ticks: {
-                              maxRotation: 45,
-                              minRotation: 45,
-                              color: '#ccc',
-                          },
-                          grid: {
-                              color: 'rgba(255, 255, 255, 0.1)',
-                          },
-                      }
-                    : {
-                          type: 'time',
-                          time: {
-                              tooltipFormat: 'd/M EEEE HH',
-                              displayFormats: {
-                                  hour: 'EEEE HH',
-                              },
-                          },
-                          ticks: {
-                              color: '#ccc',
-                          },
-                          grid: {
-                              color: 'rgba(255, 255, 255, 0.1)',
-                          },
-                      },
-                y: {
-                    ticks: {
-                        color: '#ccc',
-                    },
-                    grid: {
-                        color: 'rgba(255, 255, 255, 0.1)',
-                    },
-                },
-            },
-        },
-        data: {
-            labels: chartState.hideDarkHours
-                ? timeSerie[0].timeseries.map((x) =>
-                      format(new Date(x.time), 'HH:mm')
-                  )
-                : timeSerie[0].timeseries.map((x) => x.time),
-            datasets: timeSerie.map((y, index) => ({
-                pointRadius: 5,
-                pointHoverRadius: 10,
-                borderWidth: 2,
-                borderColor: spotColors[index % spotColors.length],
-                backgroundColor: spotColors[index % spotColors.length],
-                segment: {
-                    borderColor: chartState.colorFromWindDirection
-                        ? (ctx) =>
-                              `rgb(${
-                                  (Math.sin(
-                                      y.timeseries[ctx.p0DataIndex].data.instant
-                                          .details.wind_from_direction /
-                                          (365 / 3)
-                                  ) +
-                                      1) *
-                                  (255 / 2)
-                              }, ${
-                                  (Math.cos(
-                                      y.timeseries[ctx.p0DataIndex].data.instant
-                                          .details.wind_from_direction /
-                                          (365 / 3)
-                                  ) +
-                                      1) *
-                                  (255 / 2)
-                              }, ${
-                                  (Math.tan(
-                                      y.timeseries[ctx.p0DataIndex].data.instant
-                                          .details.wind_from_direction /
-                                          (365 / 3)
-                                  ) +
-                                      1) *
-                                  (255 / 2)
-                              })`
-                        : undefined,
-                },
-                label: y.name,
-                data: y.timeseries.map(
-                    (x) =>
-                        x.data.instant.details[chartState.windSelector] *
-                        1.9438452
-                ),
-            })),
-        },
+    populateStationSelector();
+    document.querySelector('#stationSelector').addEventListener('change', (event) => {
+        chartState.selectedStation = event.target.value === '' ? null : Number(event.target.value);
+        lightUpdate();
     });
 };
+
+// --- Init ---
 
 const init = async () => {
     const chartState = {
         colorFromWindDirection: false,
         hideDarkHours: false,
         windSelector: 'wind_speed',
+        selectedStation: null,
         chart: null,
+        _timeSerie: null,
+        _rawTimeSerie: null,
     };
-    const renderChartWithState = renderChart.bind(null, chartState);
-    setupControllers(chartState, renderChartWithState);
-    renderChartWithState();
+
+    const fullRender = () => createChart(chartState);
+    const lightUpdate = () => updateChart(chartState);
+
+    setupControllers(chartState, fullRender, lightUpdate);
+    await fullRender();
 };
+
 init();

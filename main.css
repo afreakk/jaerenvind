@@ -14,10 +14,11 @@ div#controllers {
     flex-grow: 0;
     padding: 10px;
     background-color: #1a1a1a;
-    border-bottom: 1px solid #333;
+    border-bottom: 1px solid #444;
 }
 div#controllers label {
     margin-right: 15px;
+    cursor: pointer;
 }
 div#controllers button {
     background-color: #333;
@@ -30,8 +31,18 @@ div#controllers button {
 div#controllers button:hover {
     background-color: #444;
 }
+div#controllers select {
+    background-color: #333;
+    color: #e0e0e0;
+    border: 1px solid #555;
+    padding: 5px 12px;
+    cursor: pointer;
+    border-radius: 4px;
+    font-size: inherit;
+}
 div#chart-container {
     flex-grow: 1;
+    position: relative;
     background-color: #0a0a0a;
 }
 fieldset#windtypeselector {
@@ -39,4 +50,135 @@ fieldset#windtypeselector {
     border-color: #444;
     border-radius: 4px;
     margin-left: 10px;
+}
+
+#loading {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: #888;
+    font-size: 18px;
+    z-index: 1;
+}
+#loading.hidden {
+    display: none;
+}
+
+/* Accessibility */
+input[type="checkbox"],
+input[type="radio"] {
+    accent-color: #4fc3f7;
+}
+
+div#controllers input:focus-visible,
+div#controllers button:focus-visible {
+    outline: 2px solid #4fc3f7;
+    outline-offset: 2px;
+}
+
+div#controllers input:focus:not(:focus-visible),
+div#controllers button:focus:not(:focus-visible) {
+    outline: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    * {
+        transition-duration: 0.01ms !important;
+        animation-duration: 0.01ms !important;
+    }
+}
+
+/* Responsive: tablet and below */
+@media (max-width: 768px) {
+    html {
+        height: auto;
+        min-height: 100%;
+    }
+    body {
+        height: auto;
+        min-height: 100vh;
+    }
+
+    div#controllers {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        padding: 12px;
+    }
+
+    div#controllers label {
+        display: inline-flex;
+        align-items: center;
+        min-height: 44px;
+        padding: 8px 12px;
+        margin-right: 0;
+        border-radius: 6px;
+        -webkit-tap-highlight-color: rgba(255, 255, 255, 0.1);
+    }
+
+    div#controllers label:active {
+        background-color: rgba(255, 255, 255, 0.08);
+    }
+
+    div#controllers input[type="checkbox"],
+    div#controllers input[type="radio"] {
+        width: 22px;
+        height: 22px;
+        margin-right: 8px;
+    }
+
+    div#controllers button,
+    div#controllers select {
+        min-height: 44px;
+        padding: 10px 20px;
+        font-size: 16px;
+        align-self: flex-start;
+    }
+
+    fieldset#windtypeselector {
+        display: block;
+        margin-left: 0;
+        padding: 8px;
+    }
+
+    fieldset#windtypeselector > div {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+    }
+
+    fieldset#windtypeselector label {
+        flex: 1 1 auto;
+        min-width: 80px;
+        justify-content: center;
+        text-align: center;
+    }
+
+    div#chart-container {
+        height: 60vh;
+        min-height: 300px;
+        flex-grow: 0;
+        flex-shrink: 0;
+    }
+}
+
+/* Responsive: small phones */
+@media (max-width: 480px) {
+    fieldset#windtypeselector > div {
+        flex-direction: column;
+    }
+
+    fieldset#windtypeselector label {
+        min-width: unset;
+        width: 100%;
+    }
+
+    div#chart-container {
+        min-height: 250px;
+    }
+
+    div#controllers button {
+        align-self: stretch;
+    }
 }

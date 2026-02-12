@@ -1,5 +1,13 @@
 import SunCalc from 'suncalc';
 
+// Center of Jæren area — all spots are close enough for shared sunrise/sunset
+export const JAEREN_CENTER = { lat: 58.9, lon: 5.6 };
+
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+const DEGREES_PER_COMPASS_SECTOR = 22.5;
+
+export const MS_TO_KNOTS = 1.9438452;
+
 export const locations = [
     { name: 'sokn', coordinates: [59.05457902524904, 5.678849408617339] },
     {
@@ -35,63 +43,79 @@ export const locations = [
     { name: 'brusand', coordinates: [58.53274309602588, 5.755182824765484] },
 ];
 
-export const getTimeSerie = async (location) => ({
-    timeseries: (
-        await (
-            await fetch(
-                `https://api.met.no/weatherapi/locationforecast/2.0/complete?lat=${location.coordinates[0]}&lon=${location.coordinates[1]}`
-            )
-        ).json()
-    ).properties.timeseries,
-    name: location.name,
-});
-
-export const getCachedTimeSerie = async () => {
-    let yup = JSON.parse(localStorage.getItem('cachedLocationData'));
-    if (!yup || yup.date < new Date() - 300000) {
-        yup = await Promise.all(
-            locations.map(async (l) => {
-                return await getTimeSerie(l);
-            })
-        );
-        localStorage.setItem(
-            'cachedLocationData',
-            JSON.stringify({ date: +new Date(), yup })
-        );
-    } else {
-        yup = yup.yup;
+export const getTimeSerie = async (location) => {
+    const url = `https://api.met.no/weatherapi/locationforecast/2.0/complete?lat=${location.coordinates[0]}&lon=${location.coordinates[1]}`;
+    const response = await fetch(url, {
+        headers: { 'User-Agent': 'jaerenvind/1.0 github.com/jaerenvind' },
+    });
+    if (!response.ok) {
+        throw new Error(`MET API error ${response.status} for ${location.name}`);
     }
-    return yup;
+    const json = await response.json();
+    return {
+        timeseries: json.properties.timeseries,
+        name: location.name,
+    };
 };
 
-export const degToCompass = (num) =>
-    [
-        'N',
-        'NNE',
-        'NE',
-        'ENE',
-        'E',
-        'ESE',
-        'SE',
-        'SSE',
-        'S',
-        'SSW',
-        'SW',
-        'WSW',
-        'W',
-        'WNW',
-        'NW',
-        'NNW',
-    ][parseInt(num / 22.5 + 0.5) % 16];
+// In-memory cache to avoid re-parsing localStorage on every state change
+let memoryCache = null;
 
-// Check if a given time is during daylight hours for a location
-// Uses average coordinates of Jæren area for sunrise/sunset calculation
+export const getCachedTimeSerie = async () => {
+    // Return memory cache if still valid
+    if (memoryCache && memoryCache.date > Date.now() - CACHE_TTL_MS) {
+        return memoryCache.data;
+    }
+
+    // Try localStorage
+    try {
+        const stored = JSON.parse(localStorage.getItem('cachedLocationData'));
+        if (stored && stored.date > Date.now() - CACHE_TTL_MS) {
+            memoryCache = { date: stored.date, data: stored.data };
+            return stored.data;
+        }
+    } catch {
+        // Corrupt localStorage data — proceed to fetch
+    }
+
+    // Fetch fresh data, tolerating individual failures
+    const results = await Promise.allSettled(
+        locations.map((location) => getTimeSerie(location))
+    );
+    const fulfilled = results
+        .filter((r) => r.status === 'fulfilled')
+        .map((r) => r.value);
+
+    if (fulfilled.length === 0) {
+        throw new Error('Failed to fetch wind data from MET API');
+    }
+
+    // Cache in memory and localStorage
+    memoryCache = { date: Date.now(), data: fulfilled };
+    try {
+        localStorage.setItem(
+            'cachedLocationData',
+            JSON.stringify({ date: Date.now(), data: fulfilled })
+        );
+    } catch {
+        // localStorage full or unavailable — continue without caching
+    }
+
+    return fulfilled;
+};
+
+const compassDirections = [
+    'N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE',
+    'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW',
+];
+
+export const degToCompass = (num) =>
+    compassDirections[Math.round(num / DEGREES_PER_COMPASS_SECTOR) % 16];
+
+// Check if a given time is during daylight hours
 export const isDaylight = (timeString) => {
     const date = new Date(timeString);
-    // Use center of Jæren area for sun calculation (all spots are close enough)
-    const lat = 58.9;
-    const lon = 5.6;
-    const times = SunCalc.getTimes(date, lat, lon);
+    const times = SunCalc.getTimes(date, JAEREN_CENTER.lat, JAEREN_CENTER.lon);
     return date >= times.sunrise && date <= times.sunset;
 };
 
